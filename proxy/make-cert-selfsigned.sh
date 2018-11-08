@@ -1,0 +1,1 @@
+openssl req -x509 -newkey rsa:4096 -keyout xwiki.key -out xwiki.crt -days 365

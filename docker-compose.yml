@@ -1,0 +1,63 @@
+version: '2'
+services:
+  # Container running nginx as reverse proxy
+  proxy:
+    image: "automationx/xwiki-proxy"
+    build:
+      context: ./proxy
+      args:
+        - NGINX_VERSION
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - web
+      
+  # Container running Apache SOLR as search index for xwiki
+  index:
+    image: "automationx/xwiki-index:${XWIKI_VERSION}"
+    build:
+      context: ./index
+      args:
+        - SOLR_VERSION
+        - XWIKI_VERSION
+    volumes:
+      - xwiki-solr-data:/opt/solr/server/solr
+
+  # The container that runs xwiki
+  web:
+    image: "xwiki:${XWIKI_VERSION}-postgres-tomcat"
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    # The DB_USER/DB_PASSWORD/DB_HOST variables are used in the hibernate.cfg.xml file.
+    environment:
+      - DB_USER=xwiki
+      - DB_PASSWORD=xwiki
+      - DB_DATABASE=xwiki
+      - DB_HOST=db
+      - INDEX_HOST=index
+    volumes:
+      - xwiki-web-data:/usr/local/xwiki
+
+  # The container that runs PostgreSQL
+  db:
+    image: "postgres:${POSTGRES_VERSION}"
+    restart: always
+    volumes:
+      - xwiki-postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_ROOT_PASSWORD=xwiki
+      - POSTGRES_PASSWORD=xwiki
+      - POSTGRES_USER=xwiki
+      - POSTGRES_DB=xwiki
+      - POSTGRES_INITDB_ARGS="--encoding=UTF8"
+volumes:
+  xwiki-postgres-data:
+#    external: true
+  xwiki-web-data:
+#    external: true
+  xwiki-solr-data:
